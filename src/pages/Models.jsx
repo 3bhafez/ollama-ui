@@ -16,7 +16,7 @@ const Models = () => {
   const [activeFilter, setActiveFilter] = useState(null)
   const [pagination, setPagination] = useState({
     currentPage: 1,
-    pageSize: 12,
+    pageSize: 11,
     totalPages: 1,
     totalRecords: 0
   })

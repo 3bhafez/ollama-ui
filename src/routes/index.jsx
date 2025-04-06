@@ -1,12 +1,38 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import Models from '../pages/Models'
-
+import Login from '../pages/Login'
+import Register from '../pages/Register'
+import ProtectedRoute from '../components/auth/ProtectedRoute'
+import { useAuth } from '../context/AuthContext'
 
 const AppRoutes = () => {
+  const { isAuthenticated } = useAuth();
+
   return (
     <Routes>
-      <Route path="/" element={<Navigate to="/models" replace />} />
+      {/* Public routes */}
+      <Route path="/login" element={
+        isAuthenticated() ? <Navigate to="/" replace /> : <Login />
+      } />
+      <Route path="/register" element={
+        isAuthenticated() ? <Navigate to="/" replace /> : <Register />
+      } />
+      
+      {/* Public access to Models page */}
       <Route path="/models" element={<Models />} />
+      <Route path="/" element={<Navigate to="/models" replace />} />
+      
+      {/* <Route 
+        path="/chat" 
+        element={
+          <ProtectedRoute>
+            <Chat />
+          </ProtectedRoute>
+        } 
+      /> */}
+
+      {/* redirect to models page */}
+      <Route path="*" element={<Navigate to="/models" replace />} />
     </Routes>
   )
 }
