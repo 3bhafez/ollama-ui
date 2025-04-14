@@ -5,3 +5,62 @@
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   }
 }
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Global transitions */
+*, *::before, *::after {
+  transition-property: transform, opacity, width, height, margin, background-color, color, border-color;
+  transition-duration: 200ms;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Sidebar transitions */
+.sidebar-mobile {
+  transform-origin: left;
+  transition: transform 250ms ease, opacity 200ms ease;
+}
+
+/* Sidebar styles */
+.sidebar-mobile {
+  font-feature-settings: "ss01", "ss02", "ss03", "cv01", "cv02";
+  letter-spacing: -0.01em;
+}
+
+.sidebar-enter {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.sidebar-enter-active {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.sidebar-exit {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.sidebar-exit-active {
+  transform: translateX(-100%);
+  opacity: 0;
+}
+
+.no-transition {
+  transition: none !important;
+}
+
+/* Mobile styles */
+@media (max-width: 1023px) {
+  body.sidebar-open {
+    overflow: hidden;
+  }
+  
+  .sidebar-mobile {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}

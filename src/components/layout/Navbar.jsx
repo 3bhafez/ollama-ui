@@ -21,8 +21,8 @@ const Navbar = () => {
     ];
 
     // which nav items to show
-    const navItems = isAuthenticated() 
-        ? [...publicNavItems, ...authenticatedNavItems] 
+    const navItems = isAuthenticated()
+        ? [...publicNavItems, ...authenticatedNavItems]
         : publicNavItems;
 
     const isActive = (path) => location.pathname === path
@@ -30,7 +30,7 @@ const Navbar = () => {
     // Get user initials
     const getUserInitials = () => {
         if (!user || !user.username) return '';
-        
+
         return user.username.substring(0, 2);
     };
 
@@ -60,13 +60,13 @@ const Navbar = () => {
     }, [showUserMenu]);
 
     return (
-        <div className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
-            <nav className={`transition-all duration-300 rounded-xl mx-auto max-w-7xl ${
-                isScrolled 
-                    ? 'bg-white/50 backdrop-blur-md shadow-lg' 
+        <div className="fixed top-0 left-0 right-0 z-50">
+            <nav className={`transition-all duration-300 w-full ${
+                isScrolled
+                    ? 'bg-white/50 backdrop-blur-md shadow-lg'
                     : 'bg-white/80 backdrop-blur-sm shadow-md'
             }`}>
-                <div className="px-6 py-4">
+                <div className="px-8 py-4 max-w-7xl mx-auto">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center">
                             <Link
@@ -98,7 +98,7 @@ const Navbar = () => {
                                     )}
                                 </Link>
                             ))}
-                            
+
                             {isAuthenticated() ? (
                                 <div className="relative ml-4 user-menu-container">
                                     <button
@@ -110,7 +110,7 @@ const Navbar = () => {
                                     >
                                         {getUserInitials()}
                                     </button>
-                                    
+
                                     {/* User dropdown menu */}
                                     {showUserMenu && (
                                         <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 z-10 border border-gray-100">
@@ -161,7 +161,7 @@ const Navbar = () => {
 
                 {/* Mobile menu */}
                 {isMobileMenuOpen && (
-                    <div className="md:hidden px-6 py-4 border-t border-gray-100">
+                    <div className="md:hidden px-8 py-4 border-t border-gray-100 max-w-7xl mx-auto">
                         <div className="flex flex-col gap-2">
                             {navItems.map((item) => (
                                 <Link
@@ -177,7 +177,7 @@ const Navbar = () => {
                                     {item.name}
                                 </Link>
                             ))}
-                            
+
                             {isAuthenticated() ? (
                                 <div className="border-t border-gray-100 mt-2 pt-2">
                                     <div className="px-4 py-2 flex items-center gap-3">
