@@ -32,4 +32,29 @@ const getModels = async (pageNumber = 1, pageSize = 11) => {
   }
 }
 
-export { getModels };
+const getModelInfo = async (modelName) => {
+  try {
+    const token = getToken();
+    const headers = {
+      'Content-Type': 'application/json',
+      'Accept': 'application/json'
+    };
+    
+    if (token) {
+      headers['Authorization'] = `Bearer ${token}`;
+    }
+    
+    const response = await axios({
+      method: 'get',
+      url: `${API_URL}/Models/ModelInfo/${modelName}`,
+      headers
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to fetch model info');
+  }
+}
+
+export { getModels, getModelInfo };

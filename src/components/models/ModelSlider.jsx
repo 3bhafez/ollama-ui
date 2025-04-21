@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi'
+import { Link } from 'react-router-dom'
 
 const ModelSlider = ({ models }) => {
   const [currentIndex, setCurrentIndex] = useState(0)
@@ -68,9 +69,10 @@ const ModelSlider = ({ models }) => {
       {/* Slide Content */}
       <div className="relative h-full overflow-hidden">
         {models.map((model, index) => (
-          <div 
-            key={index}
-            className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out ${
+          <Link 
+            key={index} 
+            to={`/model/${encodeURIComponent(model.name)}`}
+            className={`absolute inset-0 bg-cover bg-center transition-all duration-1000 ease-in-out cursor-pointer ${
               index === currentIndex 
                 ? 'opacity-100 z-10 scale-100 blur-0' 
                 : 'opacity-0 z-0 scale-110 blur-sm'
@@ -102,7 +104,7 @@ const ModelSlider = ({ models }) => {
                 </p>
               </div>
             </div>
-          </div>
+          </Link>
         ))}
       </div>
 
