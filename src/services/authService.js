@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://ollamanet.runasp.net/api/Auth';
+const API_URL = 'http://ollamanetgateway.runasp.net/Auth';
 
 // Helper functions for token management
 const TOKEN_KEY = 'auth_token';

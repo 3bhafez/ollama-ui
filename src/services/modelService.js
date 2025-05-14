@@ -1,7 +1,7 @@
 import axios from 'axios'
 import { getToken } from './authService'
 
-const API_URL = 'http://ollamanet.runasp.net/api'
+const API_URL = 'http://ollamanetgateway.runasp.net'
 
 const getModels = async (pageNumber = 1, pageSize = 11) => {
   try {
@@ -16,11 +16,11 @@ const getModels = async (pageNumber = 1, pageSize = 11) => {
     }
     
     const response = await axios({
-      method: 'post',
-      url: `${API_URL}/Models/Models`,
+      method: 'get',
+      url: `${API_URL}/Explore/models`,
       params: {
-        PageNumber: pageNumber,
-        PageSize: pageSize
+        page: pageNumber,
+        pageSize: pageSize
       },
       headers
     });
@@ -46,7 +46,7 @@ const getModelInfo = async (modelName) => {
     
     const response = await axios({
       method: 'get',
-      url: `${API_URL}/Models/ModelInfo/${modelName}`,
+      url: `${API_URL}/Explore/models/${modelName}`,
       headers
     });
     
