@@ -1,6 +1,6 @@
 {
-  "name": "my-react-app",
-  "homepage": "https://3bhafez.github.io/olloma-ui",
+  "name": "ollama-ui",
+  "homepage": "https://3bhafez.github.io/olloma-ui/",
   "private": true,
   "version": "0.0.0",
   "type": "module",
