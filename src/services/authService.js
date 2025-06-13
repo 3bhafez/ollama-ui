@@ -62,6 +62,7 @@ const register = async (email, password, username) => {
       const userData = {
         username: response.data.username,
         email: response.data.email,
+        rootFolderId: response.data.rootFolderId,
         roles: response.data.roles,
         expiresOn: response.data.expiresOn,
         refreshTokenExpiration: response.data.refreshTokenExpiration
@@ -90,6 +91,7 @@ const login = async (email, password) => {
       const userData = {
         username: response.data.username,
         email: response.data.email,
+        rootFolderId: response.data.rootFolderId,
         roles: response.data.roles,
         expiresOn: response.data.expiresOn,
         refreshTokenExpiration: response.data.refreshTokenExpiration

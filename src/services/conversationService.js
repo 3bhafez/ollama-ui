@@ -1,7 +1,9 @@
 import axios from 'axios';
 import { getToken } from './authService';
 
-const API_URL = 'http://ollamanet.runasp.net/api/Conversation';
+const CONVERSATION_API_URL = 'http://ollamanetgateway.runasp.net/Conversations';
+const CHAT_API_URL = 'http://ollamanetgateway.runasp.net/Chats';
+const FOLDER_API_URL = 'http://ollamanetgateway.runasp.net/Folder';
 
 // headers with auth token
 const getHeaders = () => {
@@ -19,19 +21,23 @@ const getHeaders = () => {
 };
 
 /**
- * Open a new conversation with the selected model
+ * Create a new conversation with the selected model
  * @param {string} modelName - The name of the model to use
+ * @param {string} title - The conversation title
  * @param {string} systemMessage - system message
+ * @param {string} folderId - The folder ID where the conversation will be created
  * @returns {Promise<Object>} - The conversation data
  */
-const openConversation = async (modelName, systemMessage = "") => {
+const createConversation = async (modelName, title, systemMessage = "", folderId) => {
   try {
     const response = await axios({
       method: 'post',
-      url: `${API_URL}/OpenConversation`,
+      url: CONVERSATION_API_URL,
       data: {
         modelName,
-        systemMessage
+        title,
+        systemMessage,
+        folderId
       },
       headers: getHeaders()
     });
@@ -39,7 +45,7 @@ const openConversation = async (modelName, systemMessage = "") => {
     return response.data;
   } catch (error) {
     console.error('API Error:', error);
-    throw new Error(error.response?.data?.message || 'Failed to open conversation');
+    throw new Error(error.response?.data?.message || 'Failed to create conversation');
   }
 };
 
@@ -56,7 +62,7 @@ const sendChatMessage = async (conversationId, model, content, systemMessage = "
   try {
     const response = await axios({
       method: 'post',
-      url: `${API_URL}/Chat`,
+      url: CHAT_API_URL,
       data: {
         conversationId,
         model,
@@ -75,21 +81,21 @@ const sendChatMessage = async (conversationId, model, content, systemMessage = "
 };
 
 /**
- * Get all conversations for the current user
- * @returns {Promise<Object>} - The conversations data
+ * Get user folders with conversations
+ * @returns {Promise<Object>} - The folders and conversations data
  */
-const getConversations = async () => {
+const getUserFolders = async () => {
   try {
     const response = await axios({
       method: 'get',
-      url: `${API_URL}/GetConversations`,
+      url: FOLDER_API_URL,
       headers: getHeaders()
     });
     
     return response.data;
   } catch (error) {
     console.error('API Error:', error);
-    throw new Error(error.response?.data?.message || 'Failed to fetch conversations');
+    throw new Error(error.response?.data?.message || 'Failed to fetch user folders');
   }
 };
 
@@ -102,7 +108,7 @@ const getConversationMessages = async (conversationId) => {
   try {
     const response = await axios({
       method: 'get',
-      url: `${API_URL}/ConversationMessages/${conversationId}`,
+      url: `${CONVERSATION_API_URL}/${conversationId}/messages`,
       headers: getHeaders()
     });
     
@@ -113,9 +119,103 @@ const getConversationMessages = async (conversationId) => {
   }
 };
 
+/**
+ * Create a new folder
+ * @param {string} name - The folder name
+ * @param {string} rootFolderId - The parent folder ID
+ * @returns {Promise<Object>} - The created folder data
+ */
+const createFolder = async (name, rootFolderId) => {
+  try {
+    const response = await axios({
+      method: 'post',
+      url: FOLDER_API_URL,
+      data: {
+        name,
+        rootFolderId
+      },
+      headers: getHeaders()
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to create folder');
+  }
+};
+
+/**
+ * Edit a folder name
+ * @param {string} folderId - The folder ID
+ * @param {string} newName - The new folder name
+ * @returns {Promise<Object>} - The response data
+ */
+const editFolder = async (folderId, newName) => {
+  try {
+    const response = await axios({
+      method: 'put',
+      url: FOLDER_API_URL,
+      data: {
+        folderId,
+        newName
+      },
+      headers: getHeaders()
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to edit folder');
+  }
+};
+
+/**
+ * Delete a folder
+ * @param {string} folderId - The folder ID
+ * @returns {Promise<Object>} - The response data
+ */
+const deleteFolder = async (folderId) => {
+  try {
+    const response = await axios({
+      method: 'delete',
+      url: `${FOLDER_API_URL}/${folderId}/soft`,
+      headers: getHeaders()
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete folder');
+  }
+};
+
+/**
+ * Delete a conversation
+ * @param {string} conversationId - The conversation ID
+ * @returns {Promise<Object>} - The response data
+ */
+const deleteConversation = async (conversationId) => {
+  try {
+    const response = await axios({
+      method: 'delete',
+      url: `${CONVERSATION_API_URL}/${conversationId}`,
+      headers: getHeaders()
+    });
+    
+    return response.data;
+  } catch (error) {
+    console.error('API Error:', error);
+    throw new Error(error.response?.data?.message || 'Failed to delete conversation');
+  }
+};
+
 export {
-  openConversation,
+  createConversation,
   sendChatMessage,
-  getConversations,
-  getConversationMessages
+  getUserFolders,
+  getConversationMessages,
+  createFolder,
+  editFolder,
+  deleteFolder,
+  deleteConversation
 };

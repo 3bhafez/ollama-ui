@@ -1,42 +1,65 @@
-import React from 'react';
-import { FiPlus, FiMessageSquare, FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiPlus, FiMessageSquare, FiChevronLeft, FiChevronRight, FiFolderPlus } from 'react-icons/fi';
 import { useConversation } from '../../context/ConversationContext';
+import FolderItem from './FolderItem';
+import FolderModal from './FolderModal';
 
 const ConversationSidebar = ({ onNewChat }) => {
   const {
-    conversations,
+    folderData,
     activeConversation,
     setConversationActive,
+    createNewFolder,
+    editFolderName,
+    deleteFolderById,
+    deleteConversationById,
     isSidebarOpen,
     sidebarTransition,
     toggleSidebar
   } = useConversation();
+  
+  const [isFolderModalOpen, setIsFolderModalOpen] = useState(false);
+  const [currentFolderId, setCurrentFolderId] = useState(null);
 
-  const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const yesterday = new Date(now);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    // If it's today
-    if (date.toDateString() === now.toDateString()) {
-      return 'Today';
+  const handleCreateFolder = () => {
+    setCurrentFolderId(null); // Root folder
+    setIsFolderModalOpen(true);
+  };
+  
+  const handleCreateSubfolder = (parentFolderId) => {
+    setCurrentFolderId(parentFolderId);
+    setIsFolderModalOpen(true);
+  };
+  
+  const handleFolderModalSubmit = async (folderName) => {
+    await createNewFolder(folderName, currentFolderId);
+  };
+  
+  const handleEditFolder = async (folderId, newName) => {
+    await editFolderName(folderId, newName);
+  };
+  
+  const handleDeleteFolder = async (folderId) => {
+    if (window.confirm('Are you sure you want to delete this folder? This action cannot be undone.')) {
+      await deleteFolderById(folderId);
     }
-
-    // If it's yesterday
-    if (date.toDateString() === yesterday.toDateString()) {
-      return 'Yesterday';
+  };
+  
+  const handleDeleteConversation = async (conversationId) => {
+    if (window.confirm('Are you sure you want to delete this conversation? This action cannot be undone.')) {
+      await deleteConversationById(conversationId);
     }
-
-    // return the date
-    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
+  
+  const handleCreateConversation = (folderId) => {
+    onNewChat(folderId);
   };
 
   if (!isSidebarOpen) {
     return (
       <button
         onClick={toggleSidebar}
-        className="fixed left-4 top-24 bg-white rounded-lg p-2 z-30 hover:bg-gray-50 transition-colors"
+        className="fixed left-4 top-20 bg-white rounded-lg p-2 z-30 hover:bg-gray-50 transition-colors shadow-md border border-gray-200"
         aria-label="Open sidebar"
         tabIndex="0"
         onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
@@ -47,60 +70,70 @@ const ConversationSidebar = ({ onNewChat }) => {
   }
 
   return (
-    <div className={`fixed inset-y-0 left-0 z-50 w-[267px] bg-white overflow-hidden flex flex-col transition-all duration-300 transform sidebar-mobile ${sidebarTransition}`} style={{top: '80px', height: 'calc(100vh - 80px)'}}>
+    <div className={`fixed top-0 left-0 z-40 w-[267px] bg-white overflow-hidden flex flex-col transition-all duration-300 transform sidebar-mobile border-r border-gray-200 ${sidebarTransition}`} style={{height: '100vh', paddingTop: '80px'}}>
       {/* Header*/}
-      <div className="p-2 flex items-center justify-between bg-white">
+      <div className="p-2 bg-white">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            onClick={() => onNewChat()}
+            className="flex items-center gap-2 flex-1 py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors text-gray-700"
+            aria-label="Start new chat"
+            tabIndex="0"
+            onKeyDown={(e) => e.key === 'Enter' && onNewChat()}
+          >
+            <FiPlus className="w-4 h-4" />
+            <span className="text-sm font-medium">New chat</span>
+          </button>
+          <button
+            onClick={toggleSidebar}
+            className="p-1 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors ml-2"
+            aria-label="Close sidebar"
+            tabIndex="0"
+            onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
+          >
+            <FiChevronLeft className="w-5 h-5" />
+          </button>
+        </div>
+        
         <button
-          onClick={onNewChat}
+          onClick={handleCreateFolder}
           className="flex items-center gap-2 w-full py-2 px-3 hover:bg-gray-100 rounded-lg transition-colors text-gray-700"
-          aria-label="Start new chat"
+          aria-label="Create new folder"
           tabIndex="0"
-          onKeyDown={(e) => e.key === 'Enter' && onNewChat()}
+          onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
         >
-          <FiPlus className="w-4 h-4" />
-          <span className="text-sm font-medium">New chat</span>
-        </button>
-        <button
-          onClick={toggleSidebar}
-          className="p-1 text-gray-500 hover:text-gray-700 rounded-md hover:bg-gray-100 transition-colors"
-          aria-label="Close sidebar"
-          tabIndex="0"
-          onKeyDown={(e) => e.key === 'Enter' && toggleSidebar()}
-        >
-          <FiChevronLeft className="w-5 h-5" />
+          <FiFolderPlus className="w-4 h-4" />
+          <span className="text-sm font-medium">New folder</span>
         </button>
       </div>
 
-      {/* Conversation List */}
+      {/* Folder Tree */}
       <div className="flex-1 overflow-y-auto bg-white px-2 py-2">
-        {conversations.length > 0 ? (
-          <div className="space-y-1">
-            {conversations.map((conversation) => (
-              <button
-                key={conversation.id}
-                onClick={() => setConversationActive(conversation.id)}
-                className={`w-full text-left p-3 rounded-lg text-[15px] transition-colors flex items-start gap-2 ${
-                  activeConversation?.id === conversation.id 
-                    ? 'bg-indigo-50 text-indigo-700 font-medium' 
-                    : 'hover:bg-gray-100 text-gray-700'
-                }`}
-                aria-label={`Chat with ${conversation.aI_Id}`}
-                tabIndex="0"
-                onKeyDown={(e) => e.key === 'Enter' && setConversationActive(conversation.id)}
-              >
-                <FiMessageSquare className={`w-4 h-4 mt-0.5 flex-shrink-0 ${activeConversation?.id === conversation.id ? 'text-indigo-600' : 'text-gray-500'}`} />
-                <div className="flex-1 min-w-0 truncate font-[450]">
-                  {conversation.aI_Id}
-                </div>
-              </button>
-            ))}
-          </div>
+        {folderData ? (
+          <FolderItem
+            folder={folderData}
+            level={0}
+            onEditFolder={handleEditFolder}
+            onDeleteFolder={handleDeleteFolder}
+            onDeleteConversation={handleDeleteConversation}
+            onCreateSubfolder={handleCreateSubfolder}
+            onCreateConversation={handleCreateConversation}
+            onSelectConversation={setConversationActive}
+            activeConversationId={activeConversation?.id}
+          />
         ) : (
           <div className="p-4 text-center text-gray-500 text-sm">
-            No conversations found
+            Loading folders...
           </div>
         )}
       </div>
+      
+      {/* Folder Modal */}
+      <FolderModal
+        isOpen={isFolderModalOpen}
+        onClose={() => setIsFolderModalOpen(false)}
+        onCreateFolder={handleFolderModalSubmit}
+      />
     </div>
   );
 };

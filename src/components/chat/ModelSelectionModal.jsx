@@ -8,6 +8,7 @@ const ModelSelectionModal = ({ isOpen, onClose, onSelectModel }) => {
   const [error, setError] = useState(null);
   const [selectedModel, setSelectedModel] = useState('');
   const [systemMessage, setSystemMessage] = useState('');
+  const [conversationTitle, setConversationTitle] = useState('');
 
   useEffect(() => {
     if (isOpen) {
@@ -34,7 +35,7 @@ const ModelSelectionModal = ({ isOpen, onClose, onSelectModel }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    onSelectModel(selectedModel, systemMessage);
+    onSelectModel(selectedModel, conversationTitle, systemMessage);
     onClose();
   };
 
@@ -79,6 +80,21 @@ const ModelSelectionModal = ({ isOpen, onClose, onSelectModel }) => {
                   </option>
                 ))}
               </select>
+            </div>
+
+            <div>
+              <label htmlFor="conversationTitle" className="block text-sm font-medium text-gray-700 mb-1">
+                Conversation Title
+              </label>
+              <input
+                id="conversationTitle"
+                type="text"
+                value={conversationTitle}
+                onChange={(e) => setConversationTitle(e.target.value)}
+                placeholder="Enter a title for this conversation"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                required
+              />
             </div>
 
             <div>

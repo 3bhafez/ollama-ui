@@ -15,7 +15,7 @@ const Chat = () => {
     error,
     isSidebarOpen,
     toggleSidebar,
-    createConversation,
+    createNewConversation,
     sendMessage
   } = useConversation();
 
@@ -52,13 +52,16 @@ const Chat = () => {
     }
   };
 
-  const handleNewChat = () => {
+  const handleNewChat = (folderId = null) => {
+    setCurrentFolderId(folderId);
     setIsModalOpen(true);
   };
+  
+  const [currentFolderId, setCurrentFolderId] = useState(null);
 
-  const handleSelectModel = async (modelName, systemMsg) => {
+  const handleSelectModel = async (modelName, title, systemMsg) => {
     try {
-      await createConversation(modelName, systemMsg);
+      await createNewConversation(modelName, title, systemMsg, currentFolderId);
       setSystemMessage(systemMsg);
       setActiveModel(modelName);
     } catch (err) {
@@ -79,14 +82,14 @@ const Chat = () => {
   };
 
   return (
-    <div className="w-full -mt-5 mb-0 relative h-[calc(100vh-80px)]">
+    <div className="w-full relative h-[calc(100vh-80px)]">
       {/* Sidebar */}
       <ConversationSidebar onNewChat={handleNewChat} />
       
       {/* Overlay for mobile when sidebar is open */}
       {isSidebarOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 z-40 lg:hidden" 
+          className="fixed inset-0 bg-black/30 z-30 lg:hidden" 
           onClick={toggleSidebar}
           aria-hidden="true"
         ></div>

@@ -1,17 +1,22 @@
 import { createContext, useState, useEffect, useContext } from 'react';
 import { 
-  openConversation, 
+  createConversation, 
   sendChatMessage, 
-  getConversations, 
-  getConversationMessages 
+  getUserFolders, 
+  getConversationMessages,
+  createFolder,
+  editFolder,
+  deleteFolder,
+  deleteConversation
 } from '../services/conversationService';
 import { useAuth } from './AuthContext';
+import { getUser } from '../services/authService';
 
 const ConversationContext = createContext(null);
 
 export const ConversationProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
-  const [conversations, setConversations] = useState([]);
+  const [folderData, setFolderData] = useState(null);
   const [activeConversation, setActiveConversation] = useState(null);
   const [activeMessages, setActiveMessages] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -71,28 +76,22 @@ export const ConversationProvider = ({ children }) => {
     return () => window.removeEventListener('resize', handleResize);
   }, [isSidebarOpen]);
 
-  // Fetch conversations when authenticated
+  // Fetch folders when authenticated
   useEffect(() => {
     if (isAuthenticated()) {
-      fetchConversations();
+      fetchFolders();
     }
   }, [isAuthenticated]);
 
-  // Fetch conversations list
-  const fetchConversations = async () => {
+  // Fetch folders and conversations
+  const fetchFolders = async () => {
     try {
       setLoading(true);
       setError(null);
-      const data = await getConversations();
-      setConversations(data.items || []);
-      
-      // If there are conversations and no active one, set the first one as active
-      if (data.items?.length > 0 && !activeConversation) {
-        setActiveConversation(data.items[0]);
-        await fetchConversationMessages(data.items[0].id);
-      }
+      const data = await getUserFolders();
+      setFolderData(data);
     } catch (err) {
-      setError(err.message || 'Failed to fetch conversations');
+      setError(err.message || 'Failed to fetch folders');
     } finally {
       setLoading(false);
     }
@@ -104,7 +103,20 @@ export const ConversationProvider = ({ children }) => {
       setLoading(true);
       setError(null);
       const messages = await getConversationMessages(conversationId);
-      setActiveMessages(messages || []);
+      
+      // Process messages to ensure consistent structure
+      const processedMessages = messages.map(message => {
+        // For Assistant messages, ensure they have a responseId field
+        if (message.role === 'Assistant') {
+          return {
+            ...message,
+            responseId: message.id // Store the original id as responseId for consistency
+          };
+        }
+        return message;
+      });
+      
+      setActiveMessages(processedMessages || []);
     } catch (err) {
       setError(err.message || 'Failed to fetch conversation messages');
     } finally {
@@ -113,23 +125,34 @@ export const ConversationProvider = ({ children }) => {
   };
 
   // Create a new conversation
-  const createConversation = async (modelName, systemMessage = "") => {
+  const createNewConversation = async (modelName, title, systemMessage = "", folderId = null) => {
     try {
       setLoading(true);
       setError(null);
-      const newConversation = await openConversation(modelName, systemMessage);
       
-      // Add the new conversation to the list
-      const updatedConversation = {
+      // Use root folder ID if no folder specified
+      const user = getUser();
+      const targetFolderId = folderId || user?.rootFolderId;
+      
+      if (!targetFolderId) {
+        throw new Error('No folder ID available');
+      }
+      
+      const newConversation = await createConversation(modelName, title, systemMessage, targetFolderId);
+      
+      // Refresh folder data to include the new conversation
+      await fetchFolders();
+      
+      // Set the new conversation as active
+      const activeConv = {
         id: newConversation.conversationId,
+        title: newConversation.title,
         aI_Id: newConversation.modelname,
         systemMessage: systemMessage,
-        createdAt: new Date().toISOString(),
-        conversationPromptResponses: []
+        createdAt: new Date().toISOString()
       };
       
-      setConversations([updatedConversation, ...conversations]);
-      setActiveConversation(updatedConversation);
+      setActiveConversation(activeConv);
       setActiveMessages([]);
       
       // Auto close sidebar on mobile after selecting a conversation
@@ -178,7 +201,8 @@ export const ConversationProvider = ({ children }) => {
       
       // Add AI response to the messages
       const aiMessage = {
-        id: response.resposneId,
+        id: response.resposneId, // Using the responseId from the API as the message id
+        responseId: response.resposneId, // Store the original responseId separately for clarity
         role: 'Assistant',
         content: response.content,
         createdAt: new Date().toISOString(),
@@ -216,7 +240,33 @@ export const ConversationProvider = ({ children }) => {
 
   // Set an existing conversation as active
   const setConversationActive = async (conversationId) => {
-    const conversation = conversations.find(c => c.id === conversationId);
+    // Find conversation in folder data
+    const findConversationInFolders = (folders) => {
+      if (!folders) return null;
+      
+      // Check conversations in current folder
+      const conversation = folders.conversations?.find(c => c.conversation_Id === conversationId);
+      if (conversation) {
+        return {
+          id: conversation.conversation_Id,
+          title: conversation.title,
+          aI_Id: conversation.aiModel_Id,
+          createdAt: conversation.createdAt
+        };
+      }
+      
+      // Check subfolders recursively
+      if (folders.subFolders) {
+        for (const subfolder of folders.subFolders) {
+          const found = findConversationInFolders(subfolder);
+          if (found) return found;
+        }
+      }
+      
+      return null;
+    };
+    
+    const conversation = findConversationInFolders(folderData);
     if (conversation) {
       setActiveConversation(conversation);
       await fetchConversationMessages(conversationId);
@@ -227,6 +277,155 @@ export const ConversationProvider = ({ children }) => {
       }
     }
   };
+  
+  // Create a new folder
+  const createNewFolder = async (name, parentFolderId = null) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use root folder ID if no parent specified
+      const user = getUser();
+      const targetParentId = parentFolderId || user?.rootFolderId;
+      
+      if (!targetParentId) {
+        throw new Error('No parent folder ID available');
+      }
+      
+      await createFolder(name, targetParentId);
+      
+      // Refresh folder data
+      await fetchFolders();
+    } catch (err) {
+      setError(err.message || 'Failed to create folder');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Edit folder name
+  const editFolderName = async (folderId, newName) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await editFolder(folderId, newName);
+      
+      // Refresh folder data
+      await fetchFolders();
+    } catch (err) {
+      setError(err.message || 'Failed to edit folder');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Delete folder
+  const deleteFolderById = async (folderId) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      await deleteFolder(folderId);
+      
+      // Refresh folder data
+      await fetchFolders();
+      
+      // If active conversation was in deleted folder, clear it
+      if (activeConversation) {
+        const conversationExists = findConversationInFolders(folderData, activeConversation.id);
+        if (!conversationExists) {
+          setActiveConversation(null);
+          setActiveMessages([]);
+        }
+      }
+    } catch (err) {
+      setError(err.message || 'Failed to delete folder');
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  // Delete conversation with optimistic UI updates
+  const deleteConversationById = async (conversationId) => {
+    // Store original state for potential rollback
+    const originalFolderData = folderData;
+    const originalActiveConversation = activeConversation;
+    const originalActiveMessages = activeMessages;
+    
+    // Optimistically update UI immediately
+    const removeConversationFromFolder = (folder) => {
+      if (!folder) return folder;
+      
+      const updatedFolder = { ...folder };
+      
+      // Remove conversation from current folder
+      if (updatedFolder.conversations) {
+        updatedFolder.conversations = updatedFolder.conversations.filter(
+          conv => conv.conversation_Id !== conversationId
+        );
+      }
+      
+      // Recursively update subfolders
+      if (updatedFolder.subFolders) {
+        updatedFolder.subFolders = updatedFolder.subFolders.map(removeConversationFromFolder);
+      }
+      
+      return updatedFolder;
+    };
+    
+    // Update folder data optimistically
+    if (folderData) {
+      setFolderData(removeConversationFromFolder(folderData));
+    }
+    
+    // Clear active conversation if it's the one being deleted
+    if (activeConversation && activeConversation.id === conversationId) {
+      setActiveConversation(null);
+      setActiveMessages([]);
+    }
+    
+    try {
+      setError(null);
+      
+      // Make API call in background
+      await deleteConversation(conversationId);
+      
+      // Optionally refresh to ensure consistency (can be removed if not needed)
+      // await fetchFolders();
+      
+    } catch (err) {
+      // Rollback optimistic updates on error
+      setFolderData(originalFolderData);
+      setActiveConversation(originalActiveConversation);
+      setActiveMessages(originalActiveMessages);
+      
+      setError(err.message || 'Failed to delete conversation');
+      throw err;
+    }
+  };
+  
+  // Helper function to find conversation in folders
+  const findConversationInFolders = (folders, conversationId) => {
+    if (!folders) return null;
+    
+    // Check conversations in current folder
+    const conversation = folders.conversations?.find(c => c.conversation_Id === conversationId);
+    if (conversation) return conversation;
+    
+    // Check subfolders recursively
+    if (folders.subFolders) {
+      for (const subfolder of folders.subFolders) {
+        const found = findConversationInFolders(subfolder, conversationId);
+        if (found) return found;
+      }
+    }
+    
+    return null;
+  };
 
   // Toggle sidebar visibility
   const toggleSidebar = () => {
@@ -234,16 +433,20 @@ export const ConversationProvider = ({ children }) => {
   };
 
   const value = {
-    conversations,
+    folderData,
     activeConversation,
     activeMessages,
     loading,
     error,
     isSidebarOpen,
     sidebarTransition,
-    fetchConversations,
+    fetchFolders,
     fetchConversationMessages,
-    createConversation,
+    createNewConversation,
+    createNewFolder,
+    editFolderName,
+    deleteFolderById,
+    deleteConversationById,
     sendMessage,
     setConversationActive,
     toggleSidebar
