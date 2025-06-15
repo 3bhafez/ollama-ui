@@ -1,50 +1,77 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { getModels } from '../services/modelService'
 import ModelCard from '../components/models/ModelCard'
 import ModelSlider from '../components/models/ModelSlider'
 import SearchBar from '../components/ui/SearchBar'
 import FilterButton from '../components/ui/FilterButton'
-import { FiChevronLeft, FiChevronRight, FiCode, FiImage } from 'react-icons/fi'
+import { FiCode, FiImage } from 'react-icons/fi'
 
 const Models = () => {
   const [models, setModels] = useState([])
   const [featuredModels, setFeaturedModels] = useState([])
   const [filteredModels, setFilteredModels] = useState([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState(null)
   const [searchTerm, setSearchTerm] = useState('')
   const [activeFilter, setActiveFilter] = useState(null)
-  const [pagination, setPagination] = useState({
-    currentPage: 1,
-    pageSize: 11,
-    totalPages: 1,
-    totalRecords: 0
-  })
+  const [hasMore, setHasMore] = useState(true)
+  const [currentPage, setCurrentPage] = useState(1)
+  const pageSize = 11
+  const observerRef = useRef()
 
-  const fetchModels = async (page) => {
+  const fetchModels = async (page, isLoadMore = false) => {
     try {
-      setLoading(true)
-      const data = await getModels(page, pagination.pageSize)
-      setModels(data.items)
-      setFilteredModels(data.items)
-
-      // Set featured models only on initial load
-      if (page === 1) {
+      if (isLoadMore) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+      
+      const data = await getModels(page, pageSize)
+      
+      if (isLoadMore) {
+        // Append new models to existing ones
+        setModels(prevModels => [...prevModels, ...data.items])
+      } else {
+        // Replace models (initial load)
+        setModels(data.items)
         setFeaturedModels(data.items.slice(0, 5))
       }
-
-      setPagination({
-        currentPage: data.currentPage,
-        pageSize: data.pageSize,
-        totalPages: data.totalPages,
-        totalRecords: data.totalRecords
-      })
+      
+      // Check if there are more pages
+      setHasMore(page < data.totalPages)
+      setCurrentPage(page)
+      
     } catch (err) {
       setError('Failed to fetch models')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
+
+  // Load more models when reaching the bottom
+  const loadMoreModels = useCallback(() => {
+    if (!loadingMore && hasMore) {
+      fetchModels(currentPage + 1, true)
+    }
+  }, [loadingMore, hasMore, currentPage])
+
+  // Intersection Observer for infinite scroll
+  const lastModelElementRef = useCallback(node => {
+    if (loading) return
+    if (observerRef.current) observerRef.current.disconnect()
+    observerRef.current = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && hasMore && !loadingMore) {
+        loadMoreModels()
+      }
+    }, {
+      threshold: 0.1,
+      rootMargin: '100px'
+    })
+    if (node) observerRef.current.observe(node)
+  }, [loading, hasMore, loadingMore, loadMoreModels])
 
   useEffect(() => {
     fetchModels(1)
@@ -81,10 +108,12 @@ const Models = () => {
     setActiveFilter(activeFilter === filter ? null : filter)
   }
 
-  const handlePageChange = (newPage) => {
-    if (newPage >= 1 && newPage <= pagination.totalPages) {
-      fetchModels(newPage)
-    }
+  // Reset pagination when search or filter changes
+  const resetAndSearch = () => {
+    setModels([])
+    setCurrentPage(1)
+    setHasMore(true)
+    fetchModels(1)
   }
 
   if (loading) {
@@ -146,11 +175,19 @@ const Models = () => {
         {/* Models Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 mb-8">
           {filteredModels.length > 0 ? (
-            filteredModels.map((model) => (
-              <div key={model.name} className="flex justify-center">
-                <ModelCard model={model} />
-              </div>
-            ))
+            filteredModels.map((model, index) => {
+              // Add ref to the last element for infinite scroll
+              const isLastElement = index === filteredModels.length - 1
+              return (
+                <div 
+                  key={`${model.name}-${index}`} 
+                  className="flex justify-center"
+                  ref={isLastElement ? lastModelElementRef : null}
+                >
+                  <ModelCard model={model} />
+                </div>
+              )
+            })
           ) : (
             <div className="col-span-full text-center py-12 text-gray-500">
               No models found matching your criteria.
@@ -158,54 +195,25 @@ const Models = () => {
           )}
         </div>
 
-        {/* Pagination Controls */}
-        <div className="flex items-center justify-between border-t border-gray-200 bg-white px-4 py-3 sm:px-6 rounded-xl shadow-sm">
-          <div className="flex flex-1 justify-between sm:hidden">
-            <button
-              onClick={() => handlePageChange(pagination.currentPage - 1)}
-              disabled={pagination.currentPage === 1}
-              className="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Previous
-            </button>
-            <button
-              onClick={() => handlePageChange(pagination.currentPage + 1)}
-              disabled={pagination.currentPage === pagination.totalPages}
-              className="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              Next
-            </button>
+        {/* Loading More Indicator */}
+        {loadingMore && (
+          <div className="flex justify-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
           </div>
-          <div className="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm text-gray-700">
-                Showing <span className="font-medium">{filteredModels.length}</span> of{' '}
-                <span className="font-medium">{pagination.totalRecords}</span> results
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handlePageChange(pagination.currentPage - 1)}
-                disabled={pagination.currentPage === 1}
-                className="relative inline-flex items-center p-2 rounded-md text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Previous page"
-              >
-                <FiChevronLeft className="h-5 w-5" />
-              </button>
-              <span className="text-sm text-gray-700">
-                Page {pagination.currentPage} of {pagination.totalPages}
-              </span>
-              <button
-                onClick={() => handlePageChange(pagination.currentPage + 1)}
-                disabled={pagination.currentPage === pagination.totalPages}
-                className="relative inline-flex items-center p-2 rounded-md text-gray-400 hover:text-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Next page"
-              >
-                <FiChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+        )}
+
+        {/* End of Results Indicator */}
+         {!hasMore && models.length > 0 && (
+           <div className="text-center py-8 text-gray-500">
+             <div className="flex items-center justify-center">
+               <div className="w-1/3 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+               <span className="px-4 text-sm">You've reached the end</span>
+               <div className="w-1/3 h-px bg-gradient-to-r from-transparent via-gray-300 to-transparent"></div>
+             </div>
+           </div>
+         )}
+
+
       </section>
     </div>
   )

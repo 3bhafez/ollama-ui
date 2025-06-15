@@ -11,7 +11,7 @@ const ModelCard = ({ model }) => {
             <img
               src={model.imageUrl}
               alt={`${model.name} logo`}
-              className="w-[85%] h-[85%] object-contain"
+              className="w-full h-full object-cover"
             />
           </div>
         </div>
@@ -30,7 +30,7 @@ const ModelCard = ({ model }) => {
 
           {/* Tags */}
           <div className="flex flex-wrap gap-1.5 mt-auto">
-            {model.tags.map((tag, index) => (
+            {model.tags.slice(0, 3).map((tag, index) => (
               <span 
                 key={index}
                 className="px-2 py-1 bg-indigo-50 text-indigo-600 text-xs font-medium rounded-md"
